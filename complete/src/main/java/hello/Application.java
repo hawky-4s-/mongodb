@@ -1,15 +1,24 @@
 package hello;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.mongodb.MongoClient;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.SimpleMongoDbFactory;
+
+import static org.springframework.data.mongodb.core.query.Criteria.*;
+import static org.springframework.data.mongodb.core.query.Query.*;
+import static org.springframework.data.mongodb.core.query.Update.*;
 
 @EnableAutoConfiguration
 public class Application implements CommandLineRunner {
 
-	@Autowired
-	private CustomerRepository repository;
+	public static final String DATABASE = "mydatabase";
+	//	@Autowired
+	private MongoOperations mongoOps;
+//	private CustomerRepository repository;
 
 	public static void main(String[] args) {
 		SpringApplication.run(Application.class, args);
@@ -18,30 +27,21 @@ public class Application implements CommandLineRunner {
 	@Override
 	public void run(String... args) throws Exception {
 
-		repository.deleteAll();
+		mongoOps = new MongoTemplate(new SimpleMongoDbFactory(new MongoClient("camunda-ci0"), DATABASE));
 
-		// save a couple of customers
-		repository.save(new Customer("Alice", "Smith"));
-		repository.save(new Customer("Bob", "Smith"));
+		mongoOps.dropCollection(Customer.class);
 
-		// fetch all customers
-		System.out.println("Customers found with findAll():");
-		System.out.println("-------------------------------");
-		for (Customer customer : repository.findAll()) {
+		mongoOps.insert(new Customer("Alice", "Smith"));
+		mongoOps.insert(new Customer("Bob", "Smith"));
+
+		for (Customer customer : mongoOps.findAll(Customer.class)) {
 			System.out.println(customer);
 		}
-		System.out.println();
 
-		// fetch an individual customer
-		System.out.println("Customer found with findByFirstName('Alice'):");
-		System.out.println("--------------------------------");
-		System.out.println(repository.findByFirstName("Alice"));
+		mongoOps.updateFirst(query(where("firstName").is("Alice")), update("age", 33), Customer.class);
 
-		System.out.println("Customers found with findByLastName('Smith'):");
-		System.out.println("--------------------------------");
-		for (Customer customer : repository.findByLastName("Smith")) {
-			System.out.println(customer);
-		}
+		Customer customer = mongoOps.findOne(query(where("age").is(33)), Customer.class);
+		System.out.println(customer);
 
 	}
 
